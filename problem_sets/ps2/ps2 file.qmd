@@ -256,3 +256,146 @@ alt.Chart(violation_summary_filtered).mark_bar().encode(
 
 On the one hand, the boxplot contains a lot of granular and detailed information. On the other hand, I would likely still recommend the scatterplot. It contains what is, in my opinion, the easiest to discern relationship between how fine levels affect amount of tickets paid. We see a weak negative correlation, telling us that as fine level increases, ticket payment gradually decreases. While this is perhaps the best 'at-a-glance' data, it's not the most nuanced. There will always be trade-offs with different data styles, but the scatterplot prioritizes readability.
 
+
+
+```{python}
+scatter = alt.Chart(violation_summary_filtered).mark_point().encode(
+    x=alt.X('avg_fine_level1:Q', title='Average Fine Level 1 ($)'),
+    y=alt.Y('fraction_paid:Q', title='Fraction of Tickets Paid'),
+    tooltip=['violation_description', 'total_tickets', 'avg_fine_level1', 'fraction_paid']
+).properties(
+    title='Relationship Between Fine Amount and Fraction of Tickets Paid'
+)
+
+scatter.display()
+
+text = scatter.mark_text(
+    align='center',
+    baseline='middle'
+).encode(
+    text='violation_description:N'  # Label each point with the violation description
+)
+
+scatter + text
+```
+
+
+```{python}
+# Sort by total_tickets and get top 10 violations
+top_10_violations = violation_summary_filtered.nlargest(10, 'total_tickets')
+
+# Create a new column for labeling top 10 and others as 'Other'
+violation_summary_filtered['violation_label'] = violation_summary_filtered['violation_description'].where(
+    violation_summary_filtered['violation_description'].isin(top_10_violations['violation_description']),
+    'Other'
+)
+
+# Create the scatter plot
+scatter2 = alt.Chart(violation_summary_filtered).mark_point().encode(
+    x=alt.X('avg_fine_level1:Q', title='Average Fine Level 1 ($)'),
+    y=alt.Y('fraction_paid:Q', title='Fraction of Tickets Paid')
+).properties(
+    title='Relationship Between Fine Amount and Fraction of Tickets Paid'
+)
+
+# Add text labels for top 10 violations, others will be labeled 'Other'
+text = scatter.mark_text(
+    align='left',
+    baseline='middle',
+    dx=7
+).encode(
+    text='violation_label:N'  # Use the new 'violation_label' column for labels
+)
+
+scatter2 + text
+```
+
+
+```{python}
+scatter = alt.Chart(violation_summary_filtered).mark_point(filled=True).encode(
+    x=alt.X('avg_fine_level1:Q', title='Average Fine Level 1 ($)'),
+    y=alt.Y('fraction_paid:Q', title='Fraction of Tickets Paid'),
+    color=alt.Color('violation_label:N', title='Violation Description')  # Use color to differentiate top 10 vs. 'Other'
+).properties(
+    title='Relationship Between Fine Amount and Fraction of Tickets Paid'
+)
+
+scatter.display()
+```
+
+
+```{python}
+unique_strings = violation_summary_filtered['violation_description'].unique()
+
+# Convert to a list (optional)
+unique_strings_list = unique_strings.tolist()
+
+# Print the result
+unique_strings_df = pd.DataFrame(unique_strings_list, columns=['unique_values'])
+
+print(unique_strings_df)
+
+def categorize_violation(description):
+    if 'EXP' in description:
+        return 'EXP'
+    elif 'STICKER' in description:
+        return 'STICKER'
+    elif 'PARK' in description:
+        return 'PARK'
+    elif 'PLATE' in description:
+        return 'PLATE'
+    else:
+        return 'OTHER'  # Group all other violations as 'OTHER'
+
+# Apply the function to create a new column in the DataFrame
+violation_summary_filtered['violation_group'] = violation_summary_filtered['violation_description'].apply(categorize_violation)
+
+# Create the scatter plot with color encoding for the violation groups
+scatter = alt.Chart(violation_summary_filtered).mark_point(filled=True).encode(
+    x=alt.X('avg_fine_level1:Q', title='Average Fine Level 1 ($)'),
+    y=alt.Y('fraction_paid:Q', title='Fraction of Tickets Paid'),
+    color=alt.Color('violation_group:N', title='Violation Group', scale=alt.Scale(scheme='category10'))
+).properties(
+    title='Relationship Between Fine Amount and Fraction of Tickets Paid'
+)
+
+# Display the chart with filled points
+scatter.display()
+```
+
+
+
+```{python}
+
+#TWO
+
+unique_strings = df['notice_level'].unique()
+
+# Convert to a list (optional)
+unique_strings_list2 = unique_strings.tolist()
+
+# Print the result
+unique_strings_df2 = pd.DataFrame(unique_strings_list2, columns=['unique_values'])
+
+print(unique_strings_df2)
+
+```
+
+```{python}
+#THREE
+
+unique_strings3 = df['ticket_queue'].unique()
+
+# Convert to a list (optional)
+unique_strings_list3 = unique_strings3.tolist()
+
+# Print the result
+unique_strings_df3 = pd.DataFrame(unique_strings_list3, columns=['unique_values'])
+
+print(unique_strings_df3)
+```
+
+
+
+
+```
