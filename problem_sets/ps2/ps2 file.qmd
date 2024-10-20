@@ -10,6 +10,12 @@ execute:
   echo: true
 ---
 
+# Sources used:
+
+https://stackoverflow.com/ , used for guidance on getting started with unknown functions, methods, or syntax issues.
+
+https://chatgpt.com/ , used for clean-up and debugging. Queries included: "Is there a more efficient way of performing this task?", "Why is this code returning an error?", and "Could you give me an example of how to use this method?"
+
 ```{python}
 # the following code will turn off any Python warnings in your code output
 import warnings
