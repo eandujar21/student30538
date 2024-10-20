@@ -1,18 +1,5 @@
 ---
-title: "Untitled"
-format: html
----
 
----
-title: "Untitled"
-format: html
----
-
-
-@@ -0,0 +1,38 @@
----
-title: "Untitled"
-format: html
 ---
 
 
@@ -25,6 +12,9 @@ import time
 import altair as alt
 
 file_path = r"C:\Users\eddie\OneDrive\Documents\GitHub\name\New folder\ppha30538_fall2024\problem_sets\ps1\data\parking_tickets_one_percent.csv"
+
+
+#1.1
 
 df = pd.read_csv(file_path)
 
@@ -42,118 +32,77 @@ def na_per_column(df):
 
 print(na_per_column(df))
 
-# hearing_disposition , notice_level and zipcode are missing
-# far more often than the others. Turning to the 
-# ProPublica article, we can likely attribute this 
-# to
-
-# The old violation price was $120. Now it is $200
-
-codes_to_replace = ['0976170', '0964125', '0964125B']
-
-df['new_code'] = df['violation_code'].apply(
-    lambda x: 'universal_sticker_code' if x in codes_to_replace else x
-)
-
-df
-
-df['issue_date'] = pd.to_datetime(df['issue_date'], errors='coerce')
-
-df['year'] = df['issue_date'].dt.year
-
-
-df['year'] = df['issue_date'].dt.year
-
-total_tickets_by_year = df.groupby('year').size().reset_index(name='count')
-
-# Sort years to ensure the visual will work accurately.
-
-total_tickets_by_year = total_tickets_by_year.sort_values('year')
-
-alt.Chart(total_tickets_by_year).mark_area(
-    interpolate='step-after',
-).encode(
-    x=alt.X('year:O', title='Year'),
-    y=alt.Y('count:Q', title='Tickets Paid')
-)
-
-
-
-
 ```
 
+1.2
 
-```{python}
-import pandas as pd
-import altair as alt
-
-# Assuming the DataFrame 'df' has been loaded already
-
-codes_to_replace = ['0976170', '0964125', '0964125B']
-
-# Step 1: Replace specific violation codes with 'universal_sticker_code'
-df['new_code'] = df['violation_code'].apply(
-    lambda x: 'universal_sticker_code' if x in codes_to_replace else x
-)
-
-# Step 2: Convert issue_date to datetime
-df['issue_date'] = pd.to_datetime(df['issue_date'], errors='coerce')
-
-# Step 3: Extract year from the issue_date
-df['year'] = df['issue_date'].dt.year
-
-# Step 4: Filter the data for 'universal_sticker_code' tickets
-missing_tickets_df = df[df['new_code'] == 'universal_sticker_code']
-
-# Step 5: Group the filtered data by year and count the number of missing tickets
-total_missing_tickets_by_year = missing_tickets_df.groupby('year').size().reset_index(name='count')
-
-# Sort the data by year to ensure correct order for plotting
-total_missing_tickets_by_year = total_missing_tickets_by_year.sort_values('year')
-
-# Step 6: Plot the number of missing tickets using Altair
-chart = alt.Chart(total_missing_tickets_by_year).mark_area(
-    interpolate='step-after'
-).encode(
-    x=alt.X('year:Q', title='Year'),  # Treat 'year' as a continuous variable
-    y=alt.Y('count:Q', title='Missing City Sticker Tickets')  # Update title to reflect filtered data
-)
-
-chart.display()
-
-```
+Hearing disposition, notice level and zipcode have the most missing entries. Turning to the ProPublica data dictionary, we can see why. Hearing disposition and notice level are fields that are left blank when there is no disposition or when no notice was sent, respectively. Likely, there are also cases where they cannot track the zipcode associated with the vehicle registration.
 
 
+1.3 
+
+First, we can obtain a list of all codes related to stickers
 
 ```{python}
 
-# 2.1 (?)
+filtered_violations = df[df['violation_description'].str.contains(
+    'STICKER')]
 
-import pandas as pd
-import altair as alt
+code_list = filtered_violations['violation_code'].unique()
 
-# Assuming the DataFrame 'df' has been loaded already
+# Convert to a list (optional)
+codes = code_list.tolist()
+
+print(codes)
+```
+
+With the narrowed-down list, we can see that there are two separate codes (ignoring letter sub-categories):
+
+The old code: 0976170
+and
+The new code: 0964125
+
+
+1.4
+
+```{python}
+# Extract the fine amounts at both levels for relevant codes
+
+violation_costs = filtered_violations[filtered_violations['violation_code'].isin(
+    ['0964125', '0964125B', '976170'])][['issue_date', 'violation_code', 'fine_level1_amount', 'fine_level2_amount']]
+
+# Sort by their fine amounts
+violation_costs_ascending = violation_costs.sort_values(
+    by='fine_level2_amount')
+print(violation_costs_ascending)
+```
+
+Using the output, we see that the level one used to be 120 and is now 200 (consistent with the article). For fine level 2, we observe 240 as the initial cost, then it became 400.
+
+2.1
+
+```{python}
 
 codes_to_replace = ['0976170', '0964125', '0964125B']
 
-# Step 1: Replace specific violation codes with 'universal_sticker_code'
+# Replace specific violation codes with 'universal_sticker_code'
 df['new_code'] = df['violation_code'].apply(
     lambda x: 'universal_sticker_code' if x in codes_to_replace else x
 )
 
-# Step 2: Convert issue_date to datetime
+# Convert issue_date to datetime
 df['issue_date'] = pd.to_datetime(df['issue_date'], errors='coerce')
 
-# Step 3: Create a new column for custom six-month intervals
+# Sort by six month intervals for easier legibility
 df['six_month_bin'] = df['issue_date'].dt.to_period('6M').dt.start_time
 
-# Step 4: Filter the data for 'universal_sticker_code' tickets
+# Filter the data for 'universal_sticker_code' tickets
 missing_tickets_df = df[df['new_code'] == 'universal_sticker_code']
 
-# Step 5: Group by the new six-month intervals
+# Group by the new six-month intervals
 total_missing_tickets_by_bin = missing_tickets_df.groupby('six_month_bin').size().reset_index(name='count')
 
-# Step 6: Plot with custom six-month bins
+# Plot
 chart = alt.Chart(total_missing_tickets_by_bin).mark_area(
     interpolate='step-after'
 ).encode(
@@ -163,96 +112,308 @@ chart = alt.Chart(total_missing_tickets_by_bin).mark_area(
     width=800  # Adjust width to fit the date labels
 )
 
-# Step 7: Add a vertical rule for 2012 price increase
+chart.display()
+
+```
+
+2.2
+
+```{python}
+codes_to_replace = ['0976170', '0964125', '0964125B']
+
+# Replace specific violation codes with 'universal_sticker_code'
+df['new_code'] = df['violation_code'].apply(
+    lambda x: 'universal_sticker_code' if x in codes_to_replace else x
+)
+
+# Convert issue_date to datetime
+df['issue_date'] = pd.to_datetime(df['issue_date'], errors='coerce')
+
+# Sort by six month intervals for easier legibility
+df['six_month_bin'] = df['issue_date'].dt.to_period('6M').dt.start_time
+
+# Filter the data for 'universal_sticker_code' tickets
+missing_tickets_df = df[df['new_code'] == 'universal_sticker_code']
+
+# Group by the new six-month intervals
+total_missing_tickets_by_bin = missing_tickets_df.groupby('six_month_bin').size().reset_index(name='count')
+
+# Plot
+chart = alt.Chart(total_missing_tickets_by_bin).mark_area(
+    interpolate='step-after'
+).encode(
+    x=alt.X('six_month_bin:T', title='Issue Date', axis=alt.Axis(format='%Y-%m')),  # Format for six-month intervals
+    y=alt.Y('count:Q', title='Missing City Sticker Tickets')
+).properties(
+    width=800  # Adjust width to fit the date labels
+)
+
 highlight_2012 = alt.Chart(pd.DataFrame({'date': ['2012-01-01']})).mark_rule(color='red', strokeDash=[5,5]).encode(
     x='date:T'
 )
 
-chart.display()
-
-
-# Combine the chart with the vertical rule
 final_chart = chart + highlight_2012
 
 final_chart.display()
 
+# For help, I started with this Altair template:
+
+# https://altair-viz.github.io/gallery/bar_chart_with_mean_line.html
+
+# I also asked ChatGPT for a series of other ways
+# to highlight parts of an Altair graph in order
+# to explore different options.
+
 ```
 
+2.3
+
+```{python}
+#Filter by relevant year
+missing_tickets_2011 = (
+    missing_tickets_df[missing_tickets_df['issue_date'].dt.year == 2011])
+
+missing_tickets_2011.shape[0]
+
+```
+
+We can conclude that there were 1935 issued tickets in 2011
+
+If we assume issued tickets are constant, we can use quantity and cost to calculate by doing the following:
+
+```{python}
+# 1935 tickets times the price increase, then scaled up
+
+projection = 1935*(200-120)*100
+
+print(projection)
+```
+
+The city should have predicted a revenue of $15,480,000 based off these assumptions. Based on these assumptions, their projection wasn't far off.
+
+2.4
 
 ```{python}
 
-import pandas as pd
+
+# Filter for 'universal_sticker_code' tickets
+sticker_tickets = df[df['new_code'] == 'universal_sticker_code']
+
+tickets_2013 = sticker_tickets[sticker_tickets['issue_date'].dt.year == 2013]
+
+paid_2013 = tickets_2013[tickets_2013["ticket_queue"] == "Paid"]['ticket_queue'].count()
+
+total_tickets_2013 = tickets_2013['ticket_queue'].count()
+
+ticket_pay_rate_2013 = (paid_2013 / total_tickets_2013) * 100
+
+print(ticket_pay_rate_2013)
+                            
+```
+
+The payment rate in 2013 was 40.59%
+
+
+```{python}
+tickets_2011 = sticker_tickets[sticker_tickets['issue_date'].dt.year == 2011]
+
+paid_2011 = tickets_2011[tickets_2011["ticket_queue"] == "Paid"]['ticket_queue'].count()
+
+total_tickets_2011 = tickets_2011['ticket_queue'].count()
+
+ticket_pay_rate_2011 = (paid_2011 / total_tickets_2011) * 100
+
+print(ticket_pay_rate_2011)
+```
+
+The payment rate in 2011 was 53.95%
+
+The difference in repayment rates was:
+
+```{python}
+difference = (ticket_pay_rate_2013)-(ticket_pay_rate_2011)
+print(difference)
+```
+
+There was a 13.36% drop
+
+Let's use the new repayment rate holding issued tickets constant:
+
+```{python}
+
+# Calculate 2011 revenue by holding tickets constant,
+# scaling them up, then applying the payment rate and price
+
+old_revenue = (1935*100)*(ticket_pay_rate_2011/100)*(120)
+old_revenue
+
+# Calculate 2013 revenue with same tickets, but new
+# repayment rate and new price
+
+new_revenue = (1935*100)*(ticket_pay_rate_2013/100)*(200)
+new_revenue
+
+# Take the difference between the two
+
+revenue_increase = new_revenue-old_revenue
+print(revenue_increase)
+
+
+```
+
+-The projected 2013 revenue is 15,709,154
+-The projected revenue increase with these assumptions is 
+3,181,154
+
+
+2.5
+
+```{python}
+# Creating a loop function to get the repayment rates
+years = range(sticker_tickets['issue_date'].dt.year.min(), 
+              sticker_tickets['issue_date'].dt.year.max() + 1)
+
+repayment_rates = []
+
+for year in years:
+    sticker_year = sticker_tickets[
+        sticker_tickets['issue_date'].dt.year == year]
+    
+    issued = sticker_year['ticket_queue'].count()
+    paid = sticker_year[sticker_year["ticket_queue"] == "Paid"]['ticket_queue'].count()
+    
+    repayment_rate = (paid / issued) * 100 if issued > 0 else 0
+    repayment_rates.append({'year': year, 'repayment_rate': repayment_rate})
+
+# Create DataFrame from the results
+df_repayment = pd.DataFrame(repayment_rates)
+print(df_repayment)
+```
+
+```{python}
+# Repayment rate chart
+repayment_rates_chart = alt.Chart(df_repayment).mark_line(point=True).encode(
+    x=alt.X('year:O', title='Year'),
+    y=alt.Y('repayment_rate:Q', title='Repayment Rate (%)', scale=alt.Scale(zero=False))
+).properties(
+    title='Repayment Rates for "Missing City Sticker" Tickets'
+)
+
+# Add vertical line for policy introduction (assuming it was introduced in 2012)
+policy_line = alt.Chart(pd.DataFrame({'year': [2012]})).mark_rule().encode(
+    x='year:O'
+)
+
+# Add text annotation for the policy line
+policy_text = alt.Chart(pd.DataFrame({'year': [2012], 'text': ['Policy Change']})).mark_text(
+    align='center',
+    baseline='top',
+    dx=-40,
+    dy=2
+).encode(
+    x='year:O',
+    text='text'
+)
+
+# Combine the chart elements
+repayment_rates_chart = (repayment_rates_chart + policy_line + policy_text).interactive()
+
+# Display the chart
+repayment_rates_chart
+```
+
+Based on this graph, it appears that the policy change's price increase led to a steep drop in repayment rates. This makes sense, as the more expensive prices get, the more we can expect individuals to be either unable to pay for the more expensive ticket or more reluctant to pay because they find it unfair.
+
+
+#3.1
+
+```{python}
+# Create a new column that filters paid tickets
 
 df['is_paid'] = df['total_payments'] > 0
 
+# Group by violation description, aggregate by mean of paid tickets to obtain the fraction.
+
 violation_summary = df.groupby('violation_description').agg(
     total_tickets=('violation_description', 'size'),  # Count total tickets
-    fraction_paid=('is_paid', 'mean'),  # Fraction of tickets that were paid
-    avg_fine_level1=('fine_level1_amount', 'mean')  # Average fine level 1 amount
+    fraction_paid=('is_paid', 'mean'),
+    avg_fine_level1=('fine_level1_amount', 'mean')
 ).reset_index()
+
+# Sort by descending
 
 violation_summary = violation_summary.sort_values(by='total_tickets', ascending=False)
 
+# Take top 5 violations
+
 top_5_violation_summary = violation_summary.head(5)
 
+
+
 print(top_5_violation_summary)
-
-violation_summary
-
-
-
 ```
 
 
 
+
+3.2
+
 ```{python}
-
-import pandas as pd
-import altair as alt
-
-# Step 1: Filter for violations that appear at least 100 times
 violation_summary_filtered = violation_summary[violation_summary['total_tickets'] >= 100]
 
-# Step 2: Remove the outlier by excluding the violation with the highest average fine
+# Remove the outlier by identifying
+# and then excluding the highest fine
+
 outlier_violation = violation_summary_filtered['avg_fine_level1'].idxmax()
 violation_summary_filtered = violation_summary_filtered.drop(outlier_violation)
 
-# Step 3: Create the scatter plot
-
-# Scatter plot of fine amount vs. fraction paid
+# Scatterplot
 scatter = alt.Chart(violation_summary_filtered).mark_point().encode(
-    x=alt.X('avg_fine_level1:Q', title='Average Fine Level 1 ($)'),
-    y=alt.Y('fraction_paid:Q', title='Fraction of Tickets Paid'),
-    tooltip=['violation_description', 'total_tickets', 'avg_fine_level1', 'fraction_paid']
+    x=alt.X('avg_fine_level1:Q', title='Average Fine ($)'),
+    y=alt.Y('fraction_paid:Q', title='Fraction of Tickets Paid')
 ).properties(
     title='Relationship Between Fine Amount and Fraction of Tickets Paid'
 )
 
 scatter.display()
+```
+# Set up a condition to only return tickets with that show up 100 or more times.
+
+Scatterplot takeaways: The scatterplot illustrates a weakly correlated negative relationship that tells us that as the average fine increases, the fraction of tickets paid tends to decrease. We observe a large cluster of ticket types clustered at the top left (i.e. there are several violations for which the average fine and paid ticket fractions are similar)
 
 
+```{python}
+
+# Boxplot
 
 alt.Chart(violation_summary_filtered).mark_boxplot().encode(
     x=alt.X('avg_fine_level1:Q', title='Average Fine Level 1 ($)'),
-    y=alt.Y('fraction_paid:Q', title='Fraction of Tickets Paid'),
-    tooltip=['violation_description', 'total_tickets', 'avg_fine_level1', 'fraction_paid']
+    y=alt.Y('fraction_paid:Q', title='Fraction of Tickets Paid')
 ).properties(
     title='Relationship Between Fine Amount and Fraction of Tickets Paid'
 )
 
+```
+
+Boxplot takeaways: The boxplot tells us that violation types appear to have different ranges. This helps us get a bit more nuance relative to the cluster in the top-left seen in the scatterplot.
+
+
+```{python}
+# Bar graph
 
 alt.Chart(violation_summary_filtered).mark_bar().encode(
     x=alt.X('avg_fine_level1:Q', title='Average Fine Level 1 ($)'),
     y=alt.Y('fraction_paid:Q', title='Fraction of Tickets Paid'),
-    tooltip=['violation_description', 'total_tickets', 'avg_fine_level1', 'fraction_paid']
+    tooltip=['violation_description']
 ).properties(
     title='Relationship Between Fine Amount and Fraction of Tickets Paid'
 )
 
-
-
-
 ```
+
+Bar graph takeaways: The bar graph tells us clearly which violations have the highest fraction that's paid, but it's a bit harder to see the variation within each violation description.
+
+3.3
 
 On the one hand, the boxplot contains a lot of granular and detailed information. On the other hand, I would likely still recommend the scatterplot. It contains what is, in my opinion, the easiest to discern relationship between how fine levels affect amount of tickets paid. We see a weak negative correlation, telling us that as fine level increases, ticket payment gradually decreases. While this is perhaps the best 'at-a-glance' data, it's not the most nuanced. There will always be trade-offs with different data styles, but the scatterplot prioritizes readability.
 
