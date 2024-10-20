@@ -1,7 +1,35 @@
 ---
-
+title: "Problem Set 2"
+author: "Eddie Andujar"
+date: "2024-10-19"
+format:
+  html:
+    theme: "default"
+execute:
+  eval: true
+  echo: true
 ---
 
+```{python}
+# the following code will turn off any Python warnings in your code output
+import warnings
+warnings.filterwarnings("ignore")
+```
+
+1. **PS2:** Due Sat Oct 19 at 5:00PM Central. Worth 50 points. 
+
+We use (`*`) to indicate a problem that we think might be time consuming. 
+
+Steps to submit (5 points on PS1)
+
+1. "This submission is my work alone and complies with the 30538 integrity
+policy." Add your initials to indicate your agreement: **EA**
+2. "I have uploaded the names of anyone I worked with on the problem set **[here](https://docs.google.com/forms/d/1-zzHx762odGlpVWtgdIC55vqF-j3gqdAp6Pno1rIGK0/edit)**"  **EA** (1 point)
+3. Late coins used this pset: **1** Late coins left after submission: **2**
+4. Knit your `ps2.qmd` 
+    * The PDF should not be more than 25 pages. Use `head()` and re-size figures when appropriate. 
+6. Submit to Gradescope (4 points) 
+7. Tag your submission in Gradescope
 
 ```{python}
 # Import libraries
@@ -11,7 +39,7 @@ import pandas as pd
 import time
 import altair as alt
 
-file_path = r"C:\Users\eddie\OneDrive\Documents\GitHub\name\New folder\ppha30538_fall2024\problem_sets\ps1\data\parking_tickets_one_percent.csv"
+file_path = r"C:\Users\Eddie Andujar\Documents\GitHub\student30538\problem_sets\ps2\data\parking_tickets_one_percent.csv"
 
 
 #1.1
@@ -112,7 +140,7 @@ chart = alt.Chart(total_missing_tickets_by_bin).mark_area(
     width=800  # Adjust width to fit the date labels
 )
 
-chart.display()
+chart
 
 ```
 
@@ -160,10 +188,7 @@ final_chart.display()
 
 # https://altair-viz.github.io/gallery/bar_chart_with_mean_line.html
 
-# I also asked ChatGPT for a series of other ways
-# to highlight parts of an Altair graph in order
-# to explore different options.
-
+# I also asked ChatGPT for cleanup
 ```
 
 2.3
@@ -199,12 +224,14 @@ The city should have predicted a revenue of $15,480,000 based off these assumpti
 # Filter for 'universal_sticker_code' tickets
 sticker_tickets = df[df['new_code'] == 'universal_sticker_code']
 
+#Focus on 2013
 tickets_2013 = sticker_tickets[sticker_tickets['issue_date'].dt.year == 2013]
 
 paid_2013 = tickets_2013[tickets_2013["ticket_queue"] == "Paid"]['ticket_queue'].count()
 
 total_tickets_2013 = tickets_2013['ticket_queue'].count()
 
+#Rate will be proportion paid relative to amount issued
 ticket_pay_rate_2013 = (paid_2013 / total_tickets_2013) * 100
 
 print(ticket_pay_rate_2013)
@@ -215,6 +242,8 @@ The payment rate in 2013 was 40.59%
 
 
 ```{python}
+
+#Same formula for 2011
 tickets_2011 = sticker_tickets[sticker_tickets['issue_date'].dt.year == 2011]
 
 paid_2011 = tickets_2011[tickets_2011["ticket_queue"] == "Paid"]['ticket_queue'].count()
@@ -231,6 +260,7 @@ The payment rate in 2011 was 53.95%
 The difference in repayment rates was:
 
 ```{python}
+#Take the difference in rates by subtracting the values
 difference = (ticket_pay_rate_2013)-(ticket_pay_rate_2011)
 print(difference)
 ```
@@ -299,12 +329,12 @@ repayment_rates_chart = alt.Chart(df_repayment).mark_line(point=True).encode(
     title='Repayment Rates for "Missing City Sticker" Tickets'
 )
 
-# Add vertical line for policy introduction (assuming it was introduced in 2012)
+# Add vertical line for the 2012 change
 policy_line = alt.Chart(pd.DataFrame({'year': [2012]})).mark_rule().encode(
     x='year:O'
 )
 
-# Add text annotation for the policy line
+# Add text for easier legibility
 policy_text = alt.Chart(pd.DataFrame({'year': [2012], 'text': ['Policy Change']})).mark_text(
     align='center',
     baseline='top',
@@ -325,7 +355,77 @@ repayment_rates_chart
 Based on this graph, it appears that the policy change's price increase led to a steep drop in repayment rates. This makes sense, as the more expensive prices get, the more we can expect individuals to be either unable to pay for the more expensive ticket or more reluctant to pay because they find it unfair.
 
 
-#3.1
+2.6
+
+```{python}
+# Calculate the total count of each violation type
+total_tickets = df['violation_description'].value_counts().reset_index()
+total_tickets.columns = ['violation_description', 'total_tickets']
+
+# Calculate repayment rates for each violation type
+repayment_rates = df.groupby('violation_description').apply(
+    lambda x: (x['ticket_queue'] == 'Paid').sum() / len(x) * 100
+).reset_index()
+repayment_rates.columns = ['violation_description', 'repayment_rate']
+
+# Merge the total ticket counts with the repayment rates
+result = pd.merge(total_tickets, repayment_rates, on='violation_description')
+
+# Calculate expected revenue as total_tickets * repayment_rate
+result['projected_revenue'] = result['total_tickets'] * result['repayment_rate']
+
+# Prepare the revenue table with selected columns
+revenue_table = result[['violation_description', 'total_tickets', 'repayment_rate', 'projected_revenue']]
+
+# Sort by expected revenue in descending order
+revenue_table = revenue_table.sort_values('projected_revenue', ascending=False)
+
+# Display the revenue table
+print(revenue_table)
+
+revenue_table.head(3)
+```
+
+Based on our generated revenue table, the most lucrative violation is expired plates or temporary registration, followed by street cleaning and residential permit parking. This makes a few key assumptions, such as the idea that individuals view all tickets with equal elasticity and will make identical behavioral changes across all violation types and prices. This is a hard assumption to prove, but focusing on projected revenue through repayment rates may give us a good proxy of what violations people are willing to pay back more frequently.
+
+
+```{python}
+filtered_revenue_table = revenue_table[revenue_table['total_tickets'] > 10000]
+top_20_revenue_table = filtered_revenue_table.sort_values('repayment_rate', ascending=False).head(20)
+
+chart = alt.Chart(top_20_revenue_table).mark_bar().encode(
+    x=alt.X('repayment_rate:Q', title='Repayment Rate (%)'),
+    y=alt.Y('violation_description:N', sort='-x', title='Violation Description'),
+    tooltip=['violation_description', 'repayment_rate', 'total_tickets']
+).properties(
+    title='Top Repayment Rates (with over 10,000 Tickets)',
+    width=600,
+    height=400
+)
+
+
+chart.display()
+```
+
+This chart helps support our argument in a different way. It tracks the highest repayment rates among only the violation types with the highest volume of issued tickets. This helps us approximate projected revenue, which is why we can see all 3 of our proposed violation types near the top of this chart.
+
+```{python}
+chart = alt.Chart(top_20_revenue_table).mark_bar().encode(
+    x=alt.X('projected_revenue:Q', title='Repayment Rate (%)'),
+    y=alt.Y('violation_description:N', sort='-x', title='Violation Description'),
+    tooltip=['violation_description', 'repayment_rate', 'total_tickets']
+).properties(
+    title='Top Projected Revenues (with over 10,000 Tickets)',
+    width=600,
+    height=400
+)
+
+chart.display()
+```
+
+This chart allows us to directly visualize the violations that are projected to earn the most revenue, which is based not only on repayment rate, but also ticket cost and volume. Here we see our three proposed violations at the top.
+
+3.1
 
 ```{python}
 # Create a new column that filters paid tickets
@@ -377,7 +477,6 @@ scatter = alt.Chart(violation_summary_filtered).mark_point().encode(
 
 scatter.display()
 ```
-# Set up a condition to only return tickets with that show up 100 or more times.
 
 Scatterplot takeaways: The scatterplot illustrates a weakly correlated negative relationship that tells us that as the average fine increases, the fraction of tickets paid tends to decrease. We observe a large cluster of ticket types clustered at the top left (i.e. there are several violations for which the average fine and paid ticket fractions are similar)
 
@@ -418,8 +517,59 @@ Bar graph takeaways: The bar graph tells us clearly which violations have the hi
 On the one hand, the boxplot contains a lot of granular and detailed information. On the other hand, I would likely still recommend the scatterplot. It contains what is, in my opinion, the easiest to discern relationship between how fine levels affect amount of tickets paid. We see a weak negative correlation, telling us that as fine level increases, ticket payment gradually decreases. While this is perhaps the best 'at-a-glance' data, it's not the most nuanced. There will always be trade-offs with different data styles, but the scatterplot prioritizes readability.
 
 
+4.1
 
 ```{python}
+# Load your dataset (assumed already loaded as 'df')
+# Check if the fine doubles
+df['fine_doubles'] = df['fine_level2_amount'] == 2 * df['fine_level1_amount']
+
+# Calculate the proportion of violations where the fine doubles
+proportion_doubles = df['fine_doubles'].mean()
+print(f"Proportion of violations that double in price: {proportion_doubles:.2%}")
+
+# Get summary statistics for violations to see if most double
+doubles_by_violation = df.groupby('violation_description')['fine_doubles'].mean().reset_index()
+```
+
+This appears to hold for 98.61% of violations
+
+```{python}
+
+violation_counts = df.groupby('violation_description')['ticket_number'].count().reset_index()
+violation_counts.columns = ['violation_description', 'citation_count']
+
+# Merge the count data with the original dataframe
+df = pd.merge(df, violation_counts, on='violation_description', suffixes=('', '_count'))
+
+# Filter for violations with at least 100 citations that do not double
+at_least_100_citations = df[(df['citation_count'] >= 100) & (df['fine_doubles'] == False)]
+
+# List all such violations
+non_doubling_violations = at_least_100_citations[['violation_description', 'fine_level1_amount', 'fine_level2_amount']].drop_duplicates()
+non_doubling_violations = non_doubling_violations.dropna(subset=['fine_level1_amount', 'fine_level2_amount'])
+
+# Calculate the increase for each non-doubling violation
+non_doubling_violations['increase_amount'] = non_doubling_violations['fine_level2_amount'] - non_doubling_violations['fine_level1_amount']
+
+non_doubling_violations
+```
+
+Through this output, we can observe the violations that don't double. The increase_amount column takes the difference between fine amounts, letting us see that, since these aren't doubled, what the actual change will be. Interestingly, some don't change at all.
+
+4.2
+
+![Notice level](28acac89-007d-419a-9610-5be5075da80f.jpg)
+
+![Ticket queue](cdb09c0c-323f-457d-88f5-fead571e2810.jpg)
+
+
+4.3
+
+```{python}
+
+# First we'll generate a scatterplot with labels for everything
+
 scatter = alt.Chart(violation_summary_filtered).mark_point().encode(
     x=alt.X('avg_fine_level1:Q', title='Average Fine Level 1 ($)'),
     y=alt.Y('fraction_paid:Q', title='Fraction of Tickets Paid'),
@@ -442,6 +592,9 @@ scatter + text
 
 
 ```{python}
+
+#This scatterplot will filter out the top 10 violations first
+
 # Sort by total_tickets and get top 10 violations
 top_10_violations = violation_summary_filtered.nlargest(10, 'total_tickets')
 
@@ -451,29 +604,7 @@ violation_summary_filtered['violation_label'] = violation_summary_filtered['viol
     'Other'
 )
 
-# Create the scatter plot
-scatter2 = alt.Chart(violation_summary_filtered).mark_point().encode(
-    x=alt.X('avg_fine_level1:Q', title='Average Fine Level 1 ($)'),
-    y=alt.Y('fraction_paid:Q', title='Fraction of Tickets Paid')
-).properties(
-    title='Relationship Between Fine Amount and Fraction of Tickets Paid'
-)
-
-# Add text labels for top 10 violations, others will be labeled 'Other'
-text = scatter.mark_text(
-    align='left',
-    baseline='middle',
-    dx=7
-).encode(
-    text='violation_label:N'  # Use the new 'violation_label' column for labels
-)
-
-scatter2 + text
-```
-
-
-```{python}
-scatter = alt.Chart(violation_summary_filtered).mark_point(filled=True).encode(
+scatter2 = alt.Chart(violation_summary_filtered).mark_point(filled=True).encode(
     x=alt.X('avg_fine_level1:Q', title='Average Fine Level 1 ($)'),
     y=alt.Y('fraction_paid:Q', title='Fraction of Tickets Paid'),
     color=alt.Color('violation_label:N', title='Violation Description')  # Use color to differentiate top 10 vs. 'Other'
@@ -481,20 +612,23 @@ scatter = alt.Chart(violation_summary_filtered).mark_point(filled=True).encode(
     title='Relationship Between Fine Amount and Fraction of Tickets Paid'
 )
 
-scatter.display()
+scatter2.display()
 ```
 
 
 ```{python}
+#Lastly, this scatterplot will collect the most common keywords
+#to group up as many categories as possible
+
 unique_strings = violation_summary_filtered['violation_description'].unique()
 
-# Convert to a list (optional)
+# Convert to a list
 unique_strings_list = unique_strings.tolist()
 
 # Print the result
 unique_strings_df = pd.DataFrame(unique_strings_list, columns=['unique_values'])
 
-print(unique_strings_df)
+#Keywords
 
 def categorize_violation(description):
     if 'EXP' in description:
@@ -520,43 +654,8 @@ scatter = alt.Chart(violation_summary_filtered).mark_point(filled=True).encode(
     title='Relationship Between Fine Amount and Fraction of Tickets Paid'
 )
 
-# Display the chart with filled points
+# Display the chart with filled points for better visualization
 scatter.display()
 ```
 
 
-
-```{python}
-
-#TWO
-
-unique_strings = df['notice_level'].unique()
-
-# Convert to a list (optional)
-unique_strings_list2 = unique_strings.tolist()
-
-# Print the result
-unique_strings_df2 = pd.DataFrame(unique_strings_list2, columns=['unique_values'])
-
-print(unique_strings_df2)
-
-```
-
-```{python}
-#THREE
-
-unique_strings3 = df['ticket_queue'].unique()
-
-# Convert to a list (optional)
-unique_strings_list3 = unique_strings3.tolist()
-
-# Print the result
-unique_strings_df3 = pd.DataFrame(unique_strings_list3, columns=['unique_values'])
-
-print(unique_strings_df3)
-```
-
-
-
-
-```
